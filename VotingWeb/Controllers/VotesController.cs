@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using System.Text;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using Microsoft.ApplicationInsights;
 
 namespace VotingWeb.Controllers
 {
@@ -17,7 +18,10 @@ namespace VotingWeb.Controllers
         string serviceProxyUrl = "http://localhost:19081/Voting/VotingData/api/VoteData";
         string partitionKind = "Int64Range";
         string partitionKey = "0";
-        
+
+
+        private TelemetryClient telemetry = new TelemetryClient();
+
         public VotesController(HttpClient httpClient)
         {
             this.httpClient = httpClient;
@@ -53,6 +57,8 @@ namespace VotingWeb.Controllers
 
             HttpResponseMessage response = await this.httpClient.PutAsync(proxyUrl, putContent);
 
+            telemetry.TrackEvent($"Adding a vote for {name}");
+
             return new ContentResult()
             {
                 StatusCode = (int)response.StatusCode,
@@ -70,6 +76,8 @@ namespace VotingWeb.Controllers
             {
                 return this.StatusCode((int)response.StatusCode);
             }
+
+            telemetry.TrackEvent($"Deleting votes for {name}");
 
             return new OkResult();
 

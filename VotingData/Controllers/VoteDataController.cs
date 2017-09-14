@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.ServiceFabric.Data;
 using System.Threading;
 using Microsoft.ServiceFabric.Data.Collections;
+using Microsoft.ApplicationInsights;
 
 namespace VotingData.Controllers
 {
@@ -13,6 +14,8 @@ namespace VotingData.Controllers
     public class VoteDataController : Controller
     {
         private readonly IReliableStateManager stateManager;
+
+        private TelemetryClient telemetry = new TelemetryClient();
 
         public VoteDataController(IReliableStateManager stateManager)
         {
@@ -56,6 +59,8 @@ namespace VotingData.Controllers
                 await tx.CommitAsync();
             }
 
+            telemetry.TrackEvent($"Added a vote for {name}");
+
             return new OkResult();
         }
 
@@ -64,13 +69,14 @@ namespace VotingData.Controllers
         public async Task<IActionResult> Delete(string name)
         {
             var votesDictionary = await this.stateManager.GetOrAddAsync<IReliableDictionary<string, int>>("counts");
-
+            
             using (ITransaction tx = this.stateManager.CreateTransaction())
             {
                 if (await votesDictionary.ContainsKeyAsync(tx, name))
                 {
                     await votesDictionary.TryRemoveAsync(tx, name);
                     await tx.CommitAsync();
+                    telemetry.TrackEvent($"Deleted votes for {name}");
                     return new OkResult();
                 }
                 else
